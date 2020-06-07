@@ -74,7 +74,7 @@ def metOffice(Config):
 
 def darkSky(Config):
 
-    """ API Request for latest DarkSky hourly forecasr
+    """ API Request for latest DarkSky hourly forecast
 
     INPUTS:
         Config              Station configuration
@@ -86,6 +86,30 @@ def darkSky(Config):
     # Download latest DarkSky hourly forecast
     Template = 'https://api.darksky.net/forecast/{}/{},{}?exclude=currently,minutely,alerts,flags&units=uk2'
     URL = Template.format(Config['Keys']['DarkSky'],Config['Station']['Latitude'],Config['Station']['Longitude'])
+    try:
+        Response = requests.get(URL,timeout=int(Config['System']['Timeout']))
+    except:
+        Response = None
+
+    # Return latest DarkSky hourly forecast
+    return Response
+
+def openWeather(Config):
+
+    """ API Request for latest OpenWeather hourly forecast
+
+    INPUTS:
+        Config              Station configuration
+
+    OUTPUT:
+        Response            API response containing latest hourly forecast
+    """
+
+    # Download latest OpenWeather hourly forecast
+    # https://api.openweathermap.org/data/2.5/onecall?lat={lat}&lon={lon}&exclude={part}&appid={YOUR API KEY}
+    Template = 'https://api.openweathermap.org/data/2.5/onecall?appid={}&lat={}&lon={}&exclude=current,minutely,daily&units=metric'
+    URL = Template.format(Config['Keys']['OpenWeather'], Config['Station']['Latitude'], Config['Station']['Longitude'])
+    print(URL)
     try:
         Response = requests.get(URL,timeout=int(Config['System']['Timeout']))
     except:

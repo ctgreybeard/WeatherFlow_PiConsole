@@ -72,6 +72,21 @@ def Download(metData,Config):
                 metData['Dict'] = {}
         ExtractDarkSky(metData,Config)
 
+    # If DarkSky isn't set then try OpenWeather hourly forecast
+    elif Config['Keys']['OpenWeather']:
+
+        # Download latest three-hourly forecast
+        Data = requestAPI.forecast.openWeather(Config)
+
+        # Verify API response and extract forecast
+        if requestAPI.forecast.verifyResponse(Data, 'hourly'):
+            metData['Dict'] = Data.json()
+        else:
+            Clock.schedule_once(lambda dt: Download(metData, Config), 600)
+            if not 'Dict' in metData:
+                metData['Dict'] = {}
+        ExtractOpenWeather(metData, Config)
+
     # Return metData dictionary
     return metData
 
@@ -145,7 +160,8 @@ def ExtractMetOffice(metData,Config):
     metData['WindDir'] = WindDir[0]
     metData['WindSpd'] = ['{:.0f}'.format(WindSpd[0]),WindSpd[1]]
     metData['Weather'] = Weather
-    metData['Precip']  = Precip[0]
+    metData['Precip'] = Precip[0]
+    metData['Source'] = "MetOffice"
 
     # Return metData dictionary
     return metData
@@ -215,7 +231,8 @@ def ExtractDarkSky(metData,Config):
     metData['Temp']    = ['{:.1f}'.format(Temp[0]),Temp[1]]
     metData['WindDir'] = derive.CardinalWindDirection(WindDir)[2]
     metData['WindSpd'] = ['{:.0f}'.format(WindSpd[0]),WindSpd[1]]
-    metData['Precip']  = '{:.0f}'.format(Precip[0])
+    metData['Precip'] = '{:.0f}'.format(Precip[0])
+    metData['Source'] = "DarkSky"
 
     # Define weather icon
     if Weather == 'clear-day':
@@ -240,6 +257,101 @@ def ExtractDarkSky(metData,Config):
         metData['Weather'] = '2'
     else:
         metData['Weather'] = 'ForecastUnavailable'
+
+    # Return metData dictionary
+    return metData
+
+def ExtractOpenWeather(metData, Config):
+
+    """ Parse the weather forecast from OpenWeather
+
+    INPUTS:
+        metData             Dictionary holding weather forecast data
+        Config              Station configuration
+
+    OUTPUT:
+        metData             Dictionary holding weather forecast data
+    """
+
+    # Get current time in station time zone
+    Tz = pytz.timezone(Config['Station']['Timezone'])
+    Now = datetime.now(pytz.utc).astimezone(Tz)
+
+    # Extract all forecast data from OpenWeather JSON file. If  forecast is
+    # unavailable, set forecast variables to blank and indicate to user that
+    # forecast is unavailable
+
+    try:
+        metDict = (metData['Dict']['hourly'])
+    except KeyError:
+        metData['Time']    = Now
+        metData['Temp']    = '--'
+        metData['WindDir'] = '--'
+        metData['WindSpd'] = '--'
+        metData['Weather'] = 'ForecastUnavailable'
+        metData['Precip']  = '--'
+        metData['Valid']   = '--'
+
+        # Attempt to download forecast again in 10 minutes and return
+        # metData dictionary
+        Clock.schedule_once(lambda dt: Download(metData,Config),600)
+        return metData
+
+    # Extract 'valid from' time of all available hourly forecasts, and
+    # retrieve forecast for the current hourly period
+    Times = list(item['dt'] for item in metDict)
+    metDict = metDict[bisect.bisect(Times,int(time.time()))-1]
+
+    # Extract 'Issued' and 'Valid' times
+    Issued = Times[0]
+    Valid = Times[bisect.bisect(Times,int(time.time()))]
+    Issued = datetime.fromtimestamp(Issued,pytz.utc).astimezone(Tz)
+    Valid = datetime.fromtimestamp(Valid,pytz.utc).astimezone(Tz)
+
+    # Extract weather variables from OpenWeather forecast
+    Temp = [metDict['temp'], 'c']
+    WindSpd = [metDict['wind_speed'] * 0.2778, 'mps']
+    WindDir = [metDict['wind_deg'], 'degrees']
+#    Precip  = [metDict['precipProbability']*100,'%']
+#    Precip = [0, '%']
+    Weather = metDict['weather'][0]['icon']
+
+    # Convert forecast units as required
+    Temp = observation.Units(Temp,Config['Units']['Temp'])
+    WindSpd = observation.Units(WindSpd,Config['Units']['Wind'])
+
+    # Define and format labels
+    metData['Time']    = Now
+    metData['Issued']  = datetime.strftime(Issued,'%H:%M')
+    metData['Valid']   = datetime.strftime(Valid,'%H:%M')
+    metData['Temp']    = ['{:.1f}'.format(Temp[0]),Temp[1]]
+    metData['WindDir'] = derive.CardinalWindDirection(WindDir)[2]
+    metData['WindSpd'] = ['{:.0f}'.format(WindSpd[0]),WindSpd[1]]
+    metData['Precip'] = '--'
+    metData['Source'] = "OpenWeather"
+
+    ICONMAP = {
+        "01n": "0",
+        "01d": "1",
+        "02n": "2",
+        "02d": "3",
+        "50d": "6",
+        "50n": "6",
+        "03d": "7",
+        "03n": "7",
+        "04d": "8",
+        "04n": "8",
+        "09n": "9",
+        "09d": "10",
+        "10n": "13",
+        "10d": "14",
+        "13n": "22",
+        "13d": "23",
+        "11n": "28",
+        "11d": "29",
+    }
+    # Define weather icon
+    metData['Weather'] = ICONMAP.get(Weather, "ForecastUnavailable")
 
     # Return metData dictionary
     return metData

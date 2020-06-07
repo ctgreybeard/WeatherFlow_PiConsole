@@ -569,6 +569,7 @@ def defaultConfig():
                                                           ('GeoNames',       {'Type': 'userInput', 'State': 'required', 'Format': str, 'Desc': 'GeoNames API Key'}),
                                                           ('MetOffice',      {'Type': 'userInput', 'State': 'optional', 'Format': str, 'Desc': 'UK MetOffice API Key'}),
                                                           ('DarkSky',        {'Type': 'userInput', 'State': 'optional', 'Format': str, 'Desc': 'DarkSky API Key (if you have one)',}),
+                                                          ('OpenWeather',    {'Type': 'userInput', 'State': 'optional', 'Format': str, 'Desc': 'OpenWeather API Key (if you have one)',}),
                                                           ('CheckWX',        {'Type': 'userInput', 'State': 'required', 'Format': str, 'Desc': 'CheckWX API Key',}),
                                                           ('WeatherFlow',    {'Type': 'fixed',     'Value': '146e4f2c-adec-4244-b711-1aeca8f46a48', 'Desc': 'WeatherFlow API Key'})])
     Default['Station'] =         collections.OrderedDict([('Description',    '  Station and module IDs'),

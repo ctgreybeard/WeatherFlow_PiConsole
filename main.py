@@ -285,8 +285,10 @@ class wfpiconsole(App):
         if section == 'Units' and key in ['Temp','Wind']:
             if self.config['Station']['Country'] == 'GB':
                 forecast.ExtractMetOffice(self.MetData,self.config)
-            else:
-                forecast.ExtractDarkSky(self.MetData,self.config)
+            elif self.MetData['Source'] == "DarkSky":
+                forecast.ExtractDarkSky(self.MetData, self.config)
+            elif self.MetData['Source'] == "OpenWeather":
+                forecast.ExtractOpenWeather(self.MetData, self.config)
             if key == 'Wind' and 'Dial' in self.Sager:
                 self.Sager['Dial']['Units'] = value
                 self.Sager['Forecast'] = sagerForecast.getForecast(self.Sager['Dial'])
@@ -450,6 +452,10 @@ class wfpiconsole(App):
             if Now.hour > self.MetData['Time'].hour or Now.date() > self.MetData['Time'].date():
                 forecast.ExtractDarkSky(self.MetData,self.config)
                 self.MetData['Time'] = Now
+        elif self.config['Keys']['OpenWeather']:
+            if Now.hour > self.MetData['Time'].hour or Now.date() > self.MetData['Time'].date():
+                forecast.ExtractOpenWeather(self.MetData, self.config)
+                self.MetData['Time'] = Now
 
         # Once dusk has passed, calculate new sunrise/sunset times
         if Now >= self.Astro['Dusk'][0]:
@@ -459,7 +465,7 @@ class wfpiconsole(App):
         if Now > self.Astro['Moonset'][0]:
             self.Astro = astro.MoonriseMoonset(self.Astro,self.config)
 
-        # At midnight, update Sunset, Sunrise, Moonrise and Moonset Kivy Labels 
+        # At midnight, update Sunset, Sunrise, Moonrise and Moonset Kivy Labels
         if self.Astro['Reformat'] and Now.replace(second=0).time() == time(0,0,0):
             self.Astro = astro.Format(self.Astro,self.config,"Sun")
             self.Astro = astro.Format(self.Astro,self.config,"Moon")
